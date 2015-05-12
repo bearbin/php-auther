@@ -7,9 +7,7 @@ $allow_user_registration = false;
 
 // Configuration end.
 
-require_once("../protected/uuid.php");
-
-if (require_once("../protected/dbconn.php")) {
+if (require_once($_SERVER["DOCUMENT_ROOT"] + "../protected/dbconn.php")) {
 	init_db();
 }
 
@@ -35,13 +33,13 @@ function login($email, $pass, $persist) {
 		return false;
 	}
 	// Make sure the passphrase matches.
-	if (!password_verify($pass, $result[0]["pass"]) {
+	if (!password_verify($pass, $result[0]["pass"])) {
 		return false;
 	}
 	// Passphrase matches. Generate a token and set the session.
-	$duration = new DateInterval("PT3D")
+	$duration = new DateInterval("PT3D");
 	if ($persist) {
-		$duration = new DateInterval("PT14D")
+		$duration = new DateInterval("PT14D");
 	}
 	$token = generate_token($email, $duration);
 	$cookieduration = 0;
@@ -49,17 +47,17 @@ function login($email, $pass, $persist) {
 		$cookieduration = time()+1209600;
 	}
 	// This should be set to a secure cookie, but not all sites have HTTPS enabled.
-	setcookie("auth_token", $token, $cookieduration)
+	setcookie("auth_token", $token, $cookieduration);
 	return true;
 }
 
 // Function generate_token() generates an access token for the user specified
-// by "email", and expiry date of "duration" in the future. It stores it in 
+// by "email", and expiry date of "duration" in the future. It stores it in
 // the database. It then returns the generated token.
 function generate_token($email, $duration) {
 	// TODO: Should probably make sure to check for errors e.g. database fail.
 	$token = uuid();
-	$expiry = new DateTime()->add(duration)->format("Y-m-d H:i:s");
+	$expiry = (new DateTime())->add(duration)->format("Y-m-d H:i:s");
 	$st = $DB->prepare("INSERT INTO sessions (token, email, expiry) VALUES (:token, :email, :expiry)");
 	$st->bindValue(":token", $token);
 	$st->bindValue(":email", $email);
@@ -119,10 +117,55 @@ function logout() {
 	return true;
 }
 
-function createaccount (email, pass) return success
+function create_account($email, $pass) {
+	// Make sure that the user is allowed to create an account.
+	if (!$allow_user_registration) {
+		list($authenticated, $e, $t) = authenticate();
+		if (!authenticated) {
+			return false;
+		}
+	}
+	// Check that the user does not already exist in the database.
+	$st = $DB->prepare("SELECT * FROM admins WHERE email = :email");
+	$st->bindValue(":email", $email);
+	$st->setFetchMode(PDO::FETCH_ASSOC);
+	$st->execute();
+	$result = $st->fetchAll();
+	$matches = count($result);
+	if ($matches > 0) {
+		// User already exists. Can't recreate user.
+		return false;
+	}
+	// Create a passphrase hash.
+	$hashed = password_hash($pass, PASSWORD_BCRYPT);
+	// Insert the new user into the database.
+	$st = $DB->prepare("INSERT INTO admins (email, pass) VALUES (:email, :pass)");
+	$st->bindValue(":email", $email);
+	$st->bindValue(":pass", $hashed);
+	$st->execute();
+	return true;
+}
 
-function deleteaccount (email) return success
+// Future functions.
+//function deleteaccount (email) return success
+//function changepassphrase (email, oldpass, newpass) return success
 
-function changepassphrase (email, oldpass, newpass) return success
+///////////////////////////////////////////////////////////
+// Utility functions.
+///////////////////////////////////////////////////////////
+
+
+// Function uuid returns a v4 uuid with dash seperation.
+function uuid()
+{
+	$seed = openssl_random_pseudo_bytes(16);
+
+	// Set the version bits to identify the UUID as a v4.
+	$seed[6] = chr(ord($seed[6]) & 0x0f | 0x40);
+	$seed[8] = chr(ord($seed[8]) & 0x3f | 0x80);
+
+	return vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($data), 4));
+}
+
 
 ?>
