@@ -84,7 +84,14 @@ function authenticate() {
 		return array(false, "");
 	}
 	// Is the token expired?
-	
+	if (strtotime($result[0]["expiry"] > time())) {
+		// Delete the auth token cookie.
+		setcookie("auth_token", "", -1);
+		$st = $DB->prepare("DELETE FROM sessions WHERE token = :token");
+		$st->bindValue(":token", $token);
+		$st->execute();
+		return array(false, "");
+	}
 	// The user must be valid, return true.
 	return array(true, $result[0]["email"]);
 }
