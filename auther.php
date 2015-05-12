@@ -17,7 +17,7 @@ if (require_once("../protected/dbconn.php")) {
 // It will create an access token and store it in the user's session cookie.
 // If persist is set to true the session persists over a browser restart.
 // This returns true if the operation was successful, and false otherwise.
-function login(email, pass, persist) {
+function login($email, $pass, $persist) {
 	// Prepare a statement to select admins from the database.
 	$st = $DB->prepare("SELECT * FROM admins WHERE email = :email");
 	$st->bindValue(":email", $email);
@@ -56,7 +56,7 @@ function login(email, pass, persist) {
 // Function generate_token() generates an access token for the user specified
 // by "email", and expiry date of "duration" in the future. It stores it in 
 // the database. It then returns the generated token.
-function generate_token(email, duration) {
+function generate_token($email, $duration) {
 	// TODO: Should probably make sure to check for errors e.g. database fail.
 	$token = uuid();
 	$expiry = new DateTime()->add(duration)->format("Y-m-d H:i:s");
@@ -69,12 +69,12 @@ function generate_token(email, duration) {
 }
 
 // Function authenticate() checks the user's token from their cookies and returns true
-// if they are logged in. It also returns the email of the user.
-// Access: list($success, $email) = authenticate()
+// if they are logged in. It also returns the email of the user and their auth token.
+// Access: list($success, $email, $token) = authenticate()
 function authenticate() {
 	// Make sure that the auth token cookie is set.
 	if (!isset($_COOKIE["auth_token"])) {
-		return array(false, "");
+		return array(false, "", "");
 	}
 	// Load the auth token.
 	$token = $_COOKIE["auth_token"];
@@ -88,7 +88,7 @@ function authenticate() {
 	if ($matches !== 1) {
 		// Delete the auth token cookie.
 		setcookie("auth_token", "", -1);
-		return array(false, "");
+		return array(false, "", "");
 	}
 	// Is the token expired?
 	if (strtotime($result[0]["expiry"]) > time()) {
@@ -97,13 +97,27 @@ function authenticate() {
 		$st = $DB->prepare("DELETE FROM sessions WHERE token = :token");
 		$st->bindValue(":token", $token);
 		$st->execute();
-		return array(false, "");
+		return array(false, "", "");
 	}
 	// The user must be valid, return true.
-	return array(true, $result[0]["email"]);
+	return array(true, $result[0]["email"], $token);
 }
 
-function logout (email) return success
+// Logs out the user $email. This will return false if the user is not logged in.
+function logout() {
+	// The user must be logged in to log out.
+	list($loggedin, $loggedinas, $token) = authenticate();
+	if (!$loggedin) {
+		return false;
+	}
+	// User is logged in, and has the identity referenced by $email.
+	// Now let's delete the session cookie and their auth token.
+	setcookie("auth_token", "", -1);
+	$st = $DB->prepare("DELETE FROM sessions WHERE token = :token");
+	$st->bindValue(":token", $token);
+	$st->execute();
+	return true;
+}
 
 function createaccount (email, pass) return success
 
