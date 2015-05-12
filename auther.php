@@ -32,6 +32,17 @@ function login(email, pass, persist) {
 		return false;
 	}
 	// Passphrase matches. Generate a token and set the session.
+	$duration = new DateInterval("PT3D")
+	if $persist {
+		$duration = new DateInterval("PT14D")
+	}
+	$token = generate_token($email, $duration);
+	$cookieduration = 0;
+	if $persist {
+		$cookieduration = time()+1209600;
+	}
+	// This should be set to a secure cookie, but not all sites have HTTPS enabled.
+	setcookie("auth_token", $token, $cookieduration)
 	return true;
 }
 
@@ -41,16 +52,21 @@ function login(email, pass, persist) {
 function generate_token(email, duration) {
 	// TODO: Should probably make sure to check for errors e.g. database fail.
 	$token = uuid();
-	$expiry = DateTime()->add(duration)
-	$st = $DB->prepare("INSERT INTO sessions VALUES (:token, :email, :expiry);
+	$expiry = new DateTime()->add(duration)->format("Y-m-d H:i:s");
+	$st = $DB->prepare("INSERT INTO sessions (token, email, expiry) VALUES (:token, :email, :expiry);
 	$st->bindValue(":token", $token);
 	$st->bindValue(":email", $email);
 	$st->bindValue(":expiry", $expiry");
-	$st ->setFetchMode(PDO::FETCH_ASSOC);
+	$st->execute();
+	return $token;
 }
 
 function authenticate () return success, email
 
 function logout (email) return success
+
+function createaccount (email, pass) return success
+
+function deleteaccount (email) return success
 
 ?>
