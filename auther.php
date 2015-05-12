@@ -3,19 +3,20 @@
 // Configuraton start.
 
 // Allow users to register without already being logged in.
-$allow_user_registration = false;
+$allow_user_registration = true;
 
 // Configuration end.
 
-if (require_once($_SERVER["DOCUMENT_ROOT"] + "../protected/dbconn.php")) {
-	init_db();
-}
+// Require the libraries.
+require_once("/home/protected/dbconn.php");
+require_once("/home/protected/uuid.php");
 
 // Function login() logs the user in using the email and passphrase provided.
 // It will create an access token and store it in the user's session cookie.
 // If persist is set to true the session persists over a browser restart.
 // This returns true if the operation was successful, and false otherwise.
 function login($email, $pass, $persist) {
+	global $DB;
 	// Prepare a statement to select admins from the database.
 	$st = $DB->prepare("SELECT * FROM admins WHERE email = :email");
 	$st->bindValue(":email", $email);
@@ -37,14 +38,16 @@ function login($email, $pass, $persist) {
 		return false;
 	}
 	// Passphrase matches. Generate a token and set the session.
-	$duration = new DateInterval("PT3D");
+	// Set duration to 3 days if persistence is not enabled.
+	$duration = 259200;
 	if ($persist) {
-		$duration = new DateInterval("PT14D");
+		// Otherwise set the duration to 14 days.
+		$duration = 1209600;
 	}
 	$token = generate_token($email, $duration);
 	$cookieduration = 0;
 	if ($persist) {
-		$cookieduration = time()+1209600;
+		$cookieduration = $duration;
 	}
 	// This should be set to a secure cookie, but not all sites have HTTPS enabled.
 	setcookie("auth_token", $token, $cookieduration);
@@ -55,9 +58,10 @@ function login($email, $pass, $persist) {
 // by "email", and expiry date of "duration" in the future. It stores it in
 // the database. It then returns the generated token.
 function generate_token($email, $duration) {
+	global $DB;
 	// TODO: Should probably make sure to check for errors e.g. database fail.
 	$token = uuid();
-	$expiry = (new DateTime())->add(duration)->format("Y-m-d H:i:s");
+	$expiry = date("Y-m-d H:i:s", time() + $duration);
 	$st = $DB->prepare("INSERT INTO sessions (token, email, expiry) VALUES (:token, :email, :expiry)");
 	$st->bindValue(":token", $token);
 	$st->bindValue(":email", $email);
@@ -70,6 +74,7 @@ function generate_token($email, $duration) {
 // if they are logged in. It also returns the email of the user and their auth token.
 // Access: list($success, $email, $token) = authenticate()
 function authenticate() {
+	global $DB;
 	// Make sure that the auth token cookie is set.
 	if (!isset($_COOKIE["auth_token"])) {
 		return array(false, "", "");
@@ -103,6 +108,7 @@ function authenticate() {
 
 // Logs out the user $email. This will return false if the user is not logged in.
 function logout() {
+	global $DB;
 	// The user must be logged in to log out.
 	list($loggedin, $loggedinas, $token) = authenticate();
 	if (!$loggedin) {
@@ -118,6 +124,7 @@ function logout() {
 }
 
 function create_account($email, $pass) {
+	global $DB;
 	// Make sure that the user is allowed to create an account.
 	if (!$allow_user_registration) {
 		list($authenticated, $e, $t) = authenticate();
@@ -149,23 +156,5 @@ function create_account($email, $pass) {
 // Future functions.
 //function deleteaccount (email) return success
 //function changepassphrase (email, oldpass, newpass) return success
-
-///////////////////////////////////////////////////////////
-// Utility functions.
-///////////////////////////////////////////////////////////
-
-
-// Function uuid returns a v4 uuid with dash seperation.
-function uuid()
-{
-	$seed = openssl_random_pseudo_bytes(16);
-
-	// Set the version bits to identify the UUID as a v4.
-	$seed[6] = chr(ord($seed[6]) & 0x0f | 0x40);
-	$seed[8] = chr(ord($seed[8]) & 0x3f | 0x80);
-
-	return vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($data), 4));
-}
-
 
 ?>
