@@ -123,4 +123,6 @@ function createaccount (email, pass) return success
 
 function deleteaccount (email) return success
 
+function changepassphrase (email, oldpass, newpass) return success
+
 ?>
