@@ -2,7 +2,7 @@
 
 require_once("../protected/uuid.php");
 
-if require_once("../protected/dbconn.php") {
+if (require_once("../protected/dbconn.php")) {
 	init_db();
 }
 
@@ -33,12 +33,12 @@ function login(email, pass, persist) {
 	}
 	// Passphrase matches. Generate a token and set the session.
 	$duration = new DateInterval("PT3D")
-	if $persist {
+	if ($persist) {
 		$duration = new DateInterval("PT14D")
 	}
 	$token = generate_token($email, $duration);
 	$cookieduration = 0;
-	if $persist {
+	if ($persist) {
 		$cookieduration = time()+1209600;
 	}
 	// This should be set to a secure cookie, but not all sites have HTTPS enabled.
@@ -61,7 +61,33 @@ function generate_token(email, duration) {
 	return $token;
 }
 
-function authenticate () return success, email
+// Function authenticate() checks the user's token from their cookies and returns true
+// if they are logged in. It also returns the email of the user.
+// Access: list($success, $email) = authenticate()
+function authenticate() {
+	// Make sure that the auth token cookie is set.
+	if (!isset($_COOKIE["auth_token"])) {
+		return array(false, "");
+	}
+	// Load the auth token.
+	$token = $_COOKIE["auth_token"];
+	$st = $DB->prepare("SELECT * FROM sessions WHERE token = :token");
+	$st->bindValue(":token", $token);
+	$st->setFetchMode(PDO::FETCH_ASSOC);
+	$st->execute();
+	$result = $st->fetchAll();
+	// Is the token found in the database?
+	$matches = count($result);
+	if ($matches !== 1) {
+		// Delete the auth token cookie.
+		setcookie("auth_token", "", -1);
+		return array(false, "");
+	}
+	// Is the token expired?
+	
+	// The user must be valid, return true.
+	return array(true, $result[0]["email"]);
+}
 
 function logout (email) return success
 
