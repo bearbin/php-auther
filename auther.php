@@ -47,7 +47,7 @@ function login($email, $pass, $persist) {
 	$token = generate_token($email, $duration);
 	$cookieduration = 0;
 	if ($persist) {
-		$cookieduration = $duration;
+		$cookieduration = time() + $duration;
 	}
 	// This should be set to a secure cookie, but not all sites have HTTPS enabled.
 	setcookie("auth_token", $token, $cookieduration);
