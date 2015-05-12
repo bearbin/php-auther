@@ -1,5 +1,12 @@
 <?php
 
+// Configuraton start.
+
+// Allow users to register without already being logged in.
+$allow_user_registration = false;
+
+// Configuration end.
+
 require_once("../protected/uuid.php");
 
 if (require_once("../protected/dbconn.php")) {
@@ -84,7 +91,7 @@ function authenticate() {
 		return array(false, "");
 	}
 	// Is the token expired?
-	if (strtotime($result[0]["expiry"] > time())) {
+	if (strtotime($result[0]["expiry"]) > time()) {
 		// Delete the auth token cookie.
 		setcookie("auth_token", "", -1);
 		$st = $DB->prepare("DELETE FROM sessions WHERE token = :token");
