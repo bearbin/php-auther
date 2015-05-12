@@ -28,7 +28,7 @@ function login(email, pass, persist) {
 		return false;
 	}
 	// Make sure the passphrase matches.
-	if (!password_verify(pass, $result[0]["pass"]) {
+	if (!password_verify($pass, $result[0]["pass"]) {
 		return false;
 	}
 	// Passphrase matches. Generate a token and set the session.
@@ -53,10 +53,10 @@ function generate_token(email, duration) {
 	// TODO: Should probably make sure to check for errors e.g. database fail.
 	$token = uuid();
 	$expiry = new DateTime()->add(duration)->format("Y-m-d H:i:s");
-	$st = $DB->prepare("INSERT INTO sessions (token, email, expiry) VALUES (:token, :email, :expiry);
+	$st = $DB->prepare("INSERT INTO sessions (token, email, expiry) VALUES (:token, :email, :expiry)");
 	$st->bindValue(":token", $token);
 	$st->bindValue(":email", $email);
-	$st->bindValue(":expiry", $expiry");
+	$st->bindValue(":expiry", $expiry);
 	$st->execute();
 	return $token;
 }
