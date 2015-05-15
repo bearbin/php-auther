@@ -8,8 +8,8 @@ $allow_user_registration = true;
 // Configuration end.
 
 // Require the libraries.
-require_once("/home/protected/dbconn.php");
-require_once("/home/protected/uuid.php");
+require_once "/home/protected/dbconn.php";
+require_once "/home/protected/uuid.php";
 
 // Function login() logs the user in using the email and passphrase provided.
 // It will create an access token and store it in the user's session cookie.
@@ -50,6 +50,7 @@ function login($email, $pass, $persist) {
 		$cookieduration = time() + $duration;
 	}
 	// This should be set to a secure cookie, but not all sites have HTTPS enabled.
+	echo $token;
 	setcookie("auth_token", $token, $cookieduration);
 	return true;
 }
@@ -94,7 +95,7 @@ function authenticate() {
 		return array(false, "", "");
 	}
 	// Is the token expired?
-	if (strtotime($result[0]["expiry"]) > time()) {
+	if (strtotime($result[0]["expiry"]) < time()) {
 		// Delete the auth token cookie.
 		setcookie("auth_token", "", -1);
 		$st = $DB->prepare("DELETE FROM sessions WHERE token = :token");
